@@ -2,7 +2,11 @@
 
 # Installation
 ```
-add instructions of how to build with cabal etc here
+git clone https://github.com/AxelTLarsson/string-alignment.git
+cd string-alignment
+cabal sandbox init
+cabal build
+./dist/build/string-alignment/string-alignment
 ```
 
 ## Summary
