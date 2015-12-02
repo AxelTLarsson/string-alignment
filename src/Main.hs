@@ -20,18 +20,18 @@ scoreSpace = (-1)
 similarityScore :: String -> String -> Int
 similarityScore [] _ = scoreSpace
 similarityScore _ [] = scoreSpace
-similarityScore x'@(x:xs) y'@(y:ys) = maxi case1 case2 case3 where
-    case1 = similarityScore xs ys + colScore x y    -- two non-space chars
-    case2 = similarityScore xs y' + colScore x '-'  -- non-space above, space below
-    case3 = similarityScore x' ys + colScore '-' y  -- space above, non-space below
-    maxi :: Int -> Int -> Int -> Int
-    maxi a b c = max (max a b) c
+similarityScore x'@(x:xs) y'@(y:ys) = max3 case1 case2 case3 where
+    case1 = similarityScore xs ys + colScore (x,y)    -- two non-space chars
+    case2 = similarityScore xs y' + colScore (x,'-')  -- non-space above, space below
+    case3 = similarityScore x' ys + colScore ('-',y)  -- space above, non-space below
+    max3 :: Int -> Int -> Int -> Int
+    max3 a b c = max (max a b) c
 
 
-colScore :: Char -> Char -> Int
-colScore _ '-' = scoreSpace
-colScore '-' _ = scoreSpace
-colScore x y
+colScore :: (Char, Char) -> Int
+colScore (_, '-') = scoreSpace
+colScore ('-', _) = scoreSpace
+colScore (x, y)
     | x == y    = scoreMatch
     | otherwise = scoreMismatch
 
@@ -47,7 +47,7 @@ similarityScore (s:ss) (t:ts)
 
 -- Given a list of pairs of two lists as the third parameter, cons
 -- the first parameter to the first element of each pair (i.e. the first list
--- in the pairs), cons the second parameter to the second element of each pair (i.e. 
+-- in the pairs), cons the second parameter to the second element of each pair (i.e.
 -- the other list in the pairs)
 -- Take two heads and attach (cons) them at the beginning of each pair in the
 -- list of pairs of lists given as third parameter, e.g.
@@ -55,3 +55,18 @@ similarityScore (s:ss) (t:ts)
 -- > [("!hello", "?can"), ("!you", "?hear")]
 attachHeads :: a -> a -> [([a], [a])] -> [([a], [a])]
 attachHeads h1 h2 aList = [(h1:xs, h2:ys) | (xs, ys) <- aList]
+
+
+maximaBy :: Ord b => (a -> b) -> [a] -> [a]
+maximaBy valueFcn xs = filter (\x -> valueFcn x == maxVal) xs
+    where maxVal = maximum $ map valueFcn xs
+
+
+type AlignmentType = (String, String)
+{-
+optAlignments :: String -> String -> [AlignmentType]
+optAlignments x'@(x:xs) y'@(y:ys) = maximaBy colScore list
+    where list = [(x,y), (x,'-'), ('-',y)]
+
+
+-}
