@@ -1,4 +1,5 @@
 module Main where
+import Data.List (intersperse)
 
 main :: IO ()
 main = return ()
@@ -84,3 +85,15 @@ a3, a4, a5 :: AlignmentType
 a3 = (s3, t3)
 a4 = (s4, t4)
 a5 = (s5, t5)
+
+
+outputOptAlignments :: String -> String -> IO ()
+outputOptAlignments s t = do
+    let list = optAlignments s t
+        formattedList = map formatAlignment list
+    putStrLn $ "There are " ++ show (length list) ++ " optimal alignments:\n"
+    mapM_ putStrLn formattedList
+    putStrLn $ "There was " ++ show (length list) ++ " optimal alignments."
+
+formatAlignment :: AlignmentType -> String
+formatAlignment (s,t) = intersperse ' ' s ++ '\n' : intersperse ' ' t ++ "\n"
