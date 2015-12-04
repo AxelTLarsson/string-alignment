@@ -1,30 +1,21 @@
+{-
+String Alignment
+Axel Larsson
+dat11al1
+-}
 module Main where
-import Data.List (intersperse)
+import           Data.List (intersperse)
 
 main :: IO ()
-main = return ()
-
-s1, t1, s2, t2, s3, t3, s4, t4, s5, t5, s6, t6 :: String
-s1 = "HASKELL"
-t1 = "PASCA-L"
-s2 = "H-ASKELL"
-t2 = "-PASC-AL"
-s3 = "writers"
-t3 = "vintner"
-s4 = "writ-ers"
-t4 = "vintner-"
-s5 = "wri-t-ers"
-t5 = "-vintner-"
-s6 = "wri-t-ers"
-t6 = "v-intner-"
+main = outputOptAlignments "writers" "vintner"
 
 scoreMatch, scoreMismatch, scoreSpace :: Int
-scoreMatch = 1
+scoreMatch = 0
 scoreMismatch = (-1)
 scoreSpace = (-1)
 
 -- compute the optimal alignment score of two strings
--- seems to be a bug here somewhere, because similarityScore "writ" "lint"
+-- TODO seems to be a bug here somewhere, because similarityScore "writ" "lint"
 -- is not equal to the score of optAlignments "writ" "lint"
 similarityScore :: String -> String -> Int
 similarityScore [] _ = scoreSpace
@@ -33,7 +24,7 @@ similarityScore x'@(x:xs) y'@(y:ys) = max3 case1 case2 case3 where
     case1 = similarityScore xs ys + colScore (x,y)    -- two non-space chars
     case2 = similarityScore xs y' + colScore (x,'-')  -- non-space above, space below
     case3 = similarityScore x' ys + colScore ('-',y)  -- space above, non-space below
-    
+
     max3 :: Int -> Int -> Int -> Int
     max3 a b c = max (max a b) c
 
@@ -62,6 +53,13 @@ score (_, _) = 0
 attachHeads :: a -> a -> [([a], [a])] -> [([a], [a])]
 attachHeads h1 h2 aList = [(h1:xs,h2:ys) | (xs,ys) <- aList]
 
+-- the oposite to attachHeads - attaches at the end of the lists instead
+-- TODO: might be a tad inefficient, because ++ instead of :, then again
+-- I will not be able to get around it with less than not having to use attachTails
+-- at all.
+attachTails :: a -> a -> [([a], [a])] -> [([a], [a])]
+attachTails t1 t2 aList = [(xs ++ [t1], ys ++ [t2]) | (xs,ys) <- aList]
+
 
 maximaBy :: Ord b => (a -> b) -> [a] -> [a]
 maximaBy valueFcn xs = filter (\x -> valueFcn x == maxVal) xs
@@ -70,6 +68,7 @@ maximaBy valueFcn xs = filter (\x -> valueFcn x == maxVal) xs
 
 type AlignmentType = (String, String)
 
+-- naive, slow version
 optAlignments :: String -> String -> [AlignmentType]
 optAlignments x'@(x:xs) y'@(y:ys) = maximaBy score $ case1 ++ case2 ++ case3
     where case1 = attachHeads x y $ optAlignments xs ys
@@ -79,15 +78,9 @@ optAlignments [] (y:ys) = attachHeads '-' y $ optAlignments [] ys
 optAlignments (x:xs) [] = attachHeads x '-' $ optAlignments xs []
 optAlignments [] [] = [([],[])]
 
-a3, a4, a5 :: AlignmentType
-a3 = (s3, t3)
-a4 = (s4, t4)
-a5 = (s5, t5)
-
-
 outputOptAlignments :: String -> String -> IO ()
 outputOptAlignments s t = do
-    let list = optAlignments s t
+    let list = optAlignments' s t
         formattedList = map formatAlignment list
     putStrLn $ "There are " ++ show (length list) ++ " optimal alignments:\n"
     mapM_ putStrLn formattedList
@@ -96,23 +89,53 @@ outputOptAlignments s t = do
 formatAlignment :: AlignmentType -> String
 formatAlignment (s,t) = intersperse ' ' s ++ '\n' : intersperse ' ' t ++ "\n"
 
+
+-- memoized, fast version
 similarityScore' :: String -> String -> Int
-similarityScore' xs ys = simScore (length xs) (length ys)
+similarityScore' xs ys = cellScore (length xs) (length ys)
     where
-        simScore i j = simTable !! i !! j
-        simTable = [[simEntry i j | j <- [0..]] | i <- [0..]]
-        simEntry :: Int -> Int -> Int
-        simEntry 0 0 = 0
-        simEntry i 0 = scoreSpace + simEntry (i-1) 0
-        simEntry 0 j = scoreSpace + simEntry 0 (j-1)
-        simEntry i j = max3 left diag top
+        cellScore i j = table !! i !! j
+        table = [[cell i j | j <- [0..]] | i <- [0..]]
+        cell :: Int -> Int -> Int
+        cell 0 0 = 0
+        cell i 0 = scoreSpace + cellScore (i-1) 0
+        cell 0 j = scoreSpace + cellScore 0 (j-1)
+        cell i j = max3 left diag top
             where
-                left = simScore (i-1) j + scoreSpace
-                top  = simScore i (j-1) + scoreSpace
-                diag = simScore (i-1) (j-1) + match
+                left = cellScore (i-1) j + scoreSpace
+                top  = cellScore i (j-1) + scoreSpace
+                diag = cellScore (i-1) (j-1) + match
                 match = if x == y then scoreMatch else scoreMismatch
                 x = xs !! (i-1)
                 y = ys !! (j-1)
 
                 max3 :: Int -> Int -> Int -> Int
                 max3 a b c = max (max a b) c
+
+-- memoized, fast version
+optAlignments' :: String -> String -> [AlignmentType]
+optAlignments' xs ys = snd $ cell (length xs) (length ys)
+    where
+        cellScore i j = fst $ table !! i !! j
+        table = [[cell i j | j <- [0..]] | i <- [0..]]
+
+        cell :: Int -> Int -> (Int, [AlignmentType])
+        cell 0 0 = (0, [([],[])])
+        cell i 0 = (scoreSpace + cellScore (i-1) 0, [([xs !! (i-1)], "-")])
+        cell 0 j = (scoreSpace + cellScore 0 (j-1), [("-", [ys !! (j-1)])])
+        cell i j = (score', alignments)
+            where
+                score' = fst . head $ maximaBy fst $ [left, diag, top]
+                alignments = concatMap snd $ maximaBy fst $ [left, diag, top]
+                left = (cellScore (i-1) j + scoreSpace,
+                        attachTails x '-' $ cellPrefixes (i-1) j)
+                top = (cellScore i (j-1) + scoreSpace,
+                       attachTails '-' y $ cellPrefixes i (j-1))
+                diag = (cellScore (i-1) (j-1) + match,
+                        attachTails x y $ cellPrefixes (i-1) (j-1))
+                match = if x == y then scoreMatch else scoreMismatch
+                x = xs !! (i-1)
+                y = ys !! (j-1)
+
+                cellPrefixes :: Int -> Int -> [AlignmentType]
+                cellPrefixes i' j' = snd $ cell i' j'
