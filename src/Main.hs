@@ -19,11 +19,13 @@ s6 = "wri-t-ers"
 t6 = "v-intner-"
 
 scoreMatch, scoreMismatch, scoreSpace :: Int
-scoreMatch = 0
+scoreMatch = 1
 scoreMismatch = (-1)
 scoreSpace = (-1)
 
--- return the optimal alignment of two strings
+-- compute the optimal alignment score of two strings
+-- seems to be a bug here somewhere, because similarityScore "writ" "lint"
+-- is not equal to the score of optAlignments "writ" "lint"
 similarityScore :: String -> String -> Int
 similarityScore [] _ = scoreSpace
 similarityScore _ [] = scoreSpace
@@ -31,8 +33,9 @@ similarityScore x'@(x:xs) y'@(y:ys) = max3 case1 case2 case3 where
     case1 = similarityScore xs ys + colScore (x,y)    -- two non-space chars
     case2 = similarityScore xs y' + colScore (x,'-')  -- non-space above, space below
     case3 = similarityScore x' ys + colScore ('-',y)  -- space above, non-space below
-max3 :: Int -> Int -> Int -> Int
-max3 a b c = max (max a b) c
+    
+    max3 :: Int -> Int -> Int -> Int
+    max3 a b c = max (max a b) c
 
 
 colScore :: (Char, Char) -> Int
@@ -42,14 +45,9 @@ colScore (x, y)
     | x == y    = scoreMatch
     | otherwise = scoreMismatch
 
-{- This was a misunderstanding; I thought here that similarityScore should
-take the optimal alignment as parameters and simply count the score
--}
+
 score :: AlignmentType -> Int
-score ((s:ss), (t:ts))
-    | s == '-' || t == '-' = scoreSpace + score (ss, ts)
-    | s == t    = scoreMatch + score (ss, ts)
-    | otherwise = scoreMismatch + score (ss, ts)
+score ((s:ss), (t:ts)) = colScore (s, t) + score (ss, ts)
 score (_, _) = 0
 
 
@@ -97,3 +95,24 @@ outputOptAlignments s t = do
 
 formatAlignment :: AlignmentType -> String
 formatAlignment (s,t) = intersperse ' ' s ++ '\n' : intersperse ' ' t ++ "\n"
+
+similarityScore' :: String -> String -> Int
+similarityScore' xs ys = simScore (length xs) (length ys)
+    where
+        simScore i j = simTable !! i !! j
+        simTable = [[simEntry i j | j <- [0..]] | i <- [0..]]
+        simEntry :: Int -> Int -> Int
+        simEntry 0 0 = 0
+        simEntry i 0 = scoreSpace + simEntry (i-1) 0
+        simEntry 0 j = scoreSpace + simEntry 0 (j-1)
+        simEntry i j = max3 left diag top
+            where
+                left = simScore (i-1) j + scoreSpace
+                top  = simScore i (j-1) + scoreSpace
+                diag = simScore (i-1) (j-1) + match
+                match = if x == y then scoreMatch else scoreMismatch
+                x = xs !! (i-1)
+                y = ys !! (j-1)
+
+                max3 :: Int -> Int -> Int -> Int
+                max3 a b c = max (max a b) c
