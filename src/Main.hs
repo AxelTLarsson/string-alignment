@@ -40,7 +40,7 @@ outputOptAlignments s t = do
         formattedList = map formatAlignment list
     putStrLn $ "There are " ++ show (length list) ++ " optimal alignments:\n"
     mapM_ putStrLn formattedList
-    putStrLn $ "There was " ++ show (length list) ++ " optimal alignments."
+    putStrLn $ "There were " ++ show (length list) ++ " optimal alignments."
 
 formatAlignment :: AlignmentType -> String
 formatAlignment (s,t) = intersperse ' ' s ++ '\n' : intersperse ' ' t ++ "\n"
