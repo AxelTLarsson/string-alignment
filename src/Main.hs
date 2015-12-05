@@ -7,16 +7,15 @@ module Main where
 import           Data.List (intersperse)
 
 main :: IO ()
-main = outputOptAlignments "writers" "vintner"
+main = return ()
 
 scoreMatch, scoreMismatch, scoreSpace :: Int
 scoreMatch = 0
 scoreMismatch = (-1)
 scoreSpace = (-1)
 
+-- naive version
 -- compute the optimal alignment score of two strings
--- TODO seems to be a bug here somewhere, because similarityScore "writ" "lint"
--- is not equal to the score of optAlignments "writ" "lint"
 similarityScore :: String -> String -> Int
 similarityScore [] _ = scoreSpace
 similarityScore _ [] = scoreSpace
@@ -42,21 +41,12 @@ score ((s:ss), (t:ts)) = colScore (s, t) + score (ss, ts)
 score (_, _) = 0
 
 
--- Given a list of pairs of two lists as the third parameter, cons
--- the first parameter to the first element of each pair (i.e. the first list
--- in the pairs), cons the second parameter to the second element of each pair (i.e.
--- the other list in the pairs)
--- Take two heads and attach (cons) them at the beginning of each pair in the
--- list of pairs of lists given as third parameter, e.g.
--- > attachHeads '!' '?' [("hello", "can"), ("you", "hear")]
--- > [("!hello", "?can"), ("!you", "?hear")]
+-- Attaches (cons) the first head to every pair's first component (a list)
+-- and the second head to every pair's second component (also a list).
 attachHeads :: a -> a -> [([a], [a])] -> [([a], [a])]
 attachHeads h1 h2 aList = [(h1:xs,h2:ys) | (xs,ys) <- aList]
 
--- the oposite to attachHeads - attaches at the end of the lists instead
--- TODO: might be a tad inefficient, because ++ instead of :, then again
--- I will not be able to get around it with less than not having to use attachTails
--- at all.
+-- The oposite to attachHeads - attaches at the end of the lists instead
 attachTails :: a -> a -> [([a], [a])] -> [([a], [a])]
 attachTails t1 t2 aList = [(xs ++ [t1], ys ++ [t2]) | (xs,ys) <- aList]
 
@@ -78,13 +68,14 @@ optAlignments [] (y:ys) = attachHeads '-' y $ optAlignments [] ys
 optAlignments (x:xs) [] = attachHeads x '-' $ optAlignments xs []
 optAlignments [] [] = [([],[])]
 
+-- Uses the fast version of optAligments
 outputOptAlignments :: String -> String -> IO ()
 outputOptAlignments s t = do
     let list = optAlignments' s t
         formattedList = map formatAlignment list
     putStrLn $ "There are " ++ show (length list) ++ " optimal alignments:\n"
     mapM_ putStrLn formattedList
-    putStrLn $ "There was " ++ show (length list) ++ " optimal alignments."
+    putStrLn $ "There were " ++ show (length list) ++ " optimal alignments."
 
 formatAlignment :: AlignmentType -> String
 formatAlignment (s,t) = intersperse ' ' s ++ '\n' : intersperse ' ' t ++ "\n"
